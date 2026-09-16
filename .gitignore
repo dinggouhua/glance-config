@@ -1,0 +1,29 @@
+# .gitignore —— 只保留配置与代码，密钥/数据/缓存一律不入库
+# 环境变量与密钥
+*.env
+.env
+.env.*
+!.env.example
+*.secret
+
+# 真实持仓数据（含成本/数量，按需自行备份）
+glance/portfolio.md
+portfolio.md
+
+# 配置备份
+*.bak
+*.bak.*
+*.backup*
+glance.yml.bak*
+
+# 运行时缓存与日志
+*.log
+__pycache__/
+*.pyc
+node_modules/
+/tmp/
+
+# 编辑器
+.idea/
+.vscode/
+.DS_Store

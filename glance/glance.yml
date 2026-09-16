@@ -1,0 +1,877 @@
+server:
+  port: 8080
+  host: 127.0.0.1
+
+document:
+  head: |
+    <style>
+      /* 中国股市配色：上涨红色，下跌绿色 */
+      .color-positive { color: #ef4444 !important; }
+      .color-negative { color: #22c55e !important; }
+      .stock-summary { margin-bottom: 0.65rem; padding-bottom: 0.55rem; border-bottom: 1px solid var(--color-separator); }
+      .stock-summary-line { display: flex; justify-content: space-between; gap: 0.75rem; }
+      .stock-table { display: flex; flex-direction: column; gap: 0.35rem; font-size: 1.125rem; }
+      .stock-header, .stock-row { display: grid; grid-template-columns: 1.25fr 0.8fr 0.85fr 0.75fr 0.8fr 0.95fr 1.05fr; align-items: center; column-gap: 0.35rem; }
+      .stock-header { color: var(--color-paragraph); font-size: inherit; padding-bottom: 0.15rem; }
+      .stock-row { padding: 0.38rem 0; border-top: 1px solid var(--color-separator); }
+      .stock-row > span:not(:first-child), .stock-header > span:not(:first-child) { text-align: right; }
+      .stock-name { color: var(--color-highlight); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .stock-code { display: block; color: var(--color-paragraph); font-size: 0.68rem; font-weight: 400; }
+      .stock-profit { font-weight: 600; }
+      @media (max-width: 900px) {
+        .stock-header, .stock-row { grid-template-columns: 1.2fr 0.8fr 0.8fr 0.7fr 0.85fr 1fr 1fr; column-gap: 0.2rem; }
+      }
+    </style>
+
+theme:
+  presets:
+    teal-city:
+      background-color: 225 14 15
+      primary-color: 157 47 65
+      contrast-multiplier: 1.1
+    catppuccin-frappe:
+      background-color: 229 19 23
+      contrast-multiplier: 1.2
+      primary-color: 222 74 74
+      positive-color: 96 44 68
+      negative-color: 359 68 71
+    catppuccin-macchiato:
+      background-color: 232 23 18
+      contrast-multiplier: 1.2
+      primary-color: 220 83 75
+      positive-color: 105 48 72
+      negative-color: 351 74 73
+    catppuccin-mocha:
+      background-color: 240 21 15
+      contrast-multiplier: 1.2
+      primary-color: 217 92 83
+      positive-color: 115 54 76
+      negative-color: 347 70 65
+    catppuccin-latte:
+      light: true
+      background-color: 220 23 95
+      contrast-multiplier: 1.0
+      primary-color: 220 91 54
+      positive-color: 109 58 40
+      negative-color: 347 87 44
+    camouflage:
+      background-color: 186 21 20
+      contrast-multiplier: 1.2
+      primary-color: 97 13 80
+    gruvbox-dark:
+      background-color: 0 0 16
+      primary-color: 43 59 81
+      positive-color: 61 66 44
+      negative-color: 6 96 59
+    kanagawa-dark:
+      background-color: 240 13 14
+      primary-color: 51 33 68
+      negative-color: 358 100 68
+      contrast-multiplier: 1.2
+    tucan:
+      background-color: 50 1 6
+      primary-color: 24 97 58
+      negative-color: 209 88 54
+    dracula:
+      background-color: 231 15 21
+      primary-color: 265 89 79
+      contrast-multiplier: 1.2
+      positive-color: 135 94 66
+      negative-color: 0 100 67
+    shades-of-purple:
+      background-color: 243 33 25
+      contrast-multiplier: 1.2
+      primary-color: 50 100 49
+      positive-color: 98 82 71
+      negative-color: 12 77 52
+    neon-pink:
+      background-color: 240 27 11
+      contrast-multiplier: 1.5
+      primary-color: 321 100 71
+      positive-color: 165 78 51
+      negative-color: 360 100 71
+    peachy:
+      light: true
+      background-color: 28 40 77
+      primary-color: 155 100 20
+      negative-color: 0 100 60
+      contrast-multiplier: 1.1
+      text-saturation-multiplier: 0.5
+    zebra:
+      light: true
+      background-color: 0 0 95
+      primary-color: 0 0 10
+      negative-color: 0 90 50
+
+pages:
+  - name: Work
+    slug: work
+    columns:
+      - size: small
+        widgets:
+          - type: calendar
+            title: 日历
+            first-day-of-week: monday
+          - type: custom-api
+            title: 天气预报
+            body-type: string
+            cache: 1h
+            url: https://api.github.com/rate_limit
+            options:
+              location: Taizhou, Jiangsu, China
+            template: |
+              {{ $location := replaceAll " " "%20" (.Options.StringOr "location" "") }}
+              {{ $geoURL := printf "https://geocoding-api.open-meteo.com/v1/search?name=%s&count=5&language=en&format=json" $location }}
+              {{ $geo := newRequest $geoURL | getResponse }}
+              {{ $lat := $geo.JSON.String "results.0.latitude" }}
+              {{ $lon := $geo.JSON.String "results.0.longitude" }}
+              {{ if or (eq $lat "") (eq $lon "") }}
+                <p class="color-negative">天气位置解析失败</p>
+              {{ else }}
+                {{ $weatherURL := printf "https://api.open-meteo.com/v1/forecast?latitude=%s&longitude=%s&temperature_unit=celsius&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=Asia%%2FShanghai" $lat $lon }}
+                {{ $weather := newRequest $weatherURL | getResponse }}
+                {{ $dates := $weather.JSON.Array "daily.time" }}
+                {{ $codes := $weather.JSON.Array "daily.weathercode" }}
+                {{ $highs := $weather.JSON.Array "daily.temperature_2m_max" }}
+                {{ $lows := $weather.JSON.Array "daily.temperature_2m_min" }}
+                <div style="display:grid; grid-template-columns:repeat(7, minmax(0, 1fr)); gap:0.25rem; text-align:center;">
+                  {{ range $i, $date := $dates }}
+                    {{ $dateText := $date.String "" }}
+                    {{ $code := (index $codes $i).Int "" }}
+                    {{ $high := (index $highs $i).Float "" }}
+                    {{ $low := (index $lows $i).Float "" }}
+                    {{ $icon := "？" }}
+                    {{ $desc := "其他" }}
+                    {{ if eq $code 0 }}{{ $icon = "☀️" }}{{ $desc = "晴" }}
+                    {{ else if eq $code 1 }}{{ $icon = "🌤️" }}{{ $desc = "大部晴朗" }}
+                    {{ else if eq $code 2 }}{{ $icon = "🌤️" }}{{ $desc = "局部多云" }}
+                    {{ else if eq $code 3 }}{{ $icon = "☁️" }}{{ $desc = "阴" }}
+                    {{ else if eq $code 45 48 }}{{ $icon = "🌫️" }}{{ $desc = "雾" }}
+                    {{ else if le $code 57 }}{{ $icon = "🌦️" }}{{ $desc = "毛毛雨" }}
+                    {{ else if le $code 67 }}{{ $icon = "🌧️" }}{{ $desc = "雨" }}
+                    {{ else if le $code 77 }}{{ $icon = "🌨️" }}{{ $desc = "雪" }}
+                    {{ else if le $code 86 }}{{ $icon = "🌨️" }}{{ $desc = "阵雪" }}
+                    {{ else }}{{ $icon = "⚡" }}{{ $desc = "雷雨" }}
+                    {{ end }}
+                    <div>
+                      <div class="size-h6 color-paragraph">{{ replaceMatches "[0-9]+-" "" $dateText }}</div>
+                      <div style="font-size:1.35rem; line-height:1.8;" title="{{ $desc }}">{{ $icon }}</div>
+                      <div class="size-h5"><span class="color-negative">{{ printf "%.0f" $high }}°</span></div>
+                      <div class="size-h6 color-paragraph">{{ printf "%.0f" $low }}°</div>
+                    </div>
+                  {{ end }}
+                </div>
+              {{ end }}
+          - type: custom-api
+            title: 大乐透
+            cache: 30m
+            url: http://127.0.0.1:8901/lottery
+            template: |
+              <style>
+                .dlt-period { color: var(--color-subdue); font-size: 0.72em; margin-bottom: 0.35rem; }
+                .dlt-row { width: 100%; margin-bottom: 0.7rem; }
+                .dlt-row-label { color: var(--color-subdue); font-size: 0.72em; margin-bottom: 0.3rem; text-align: center; }
+                .dlt-balls { display: flex; width: 100%; justify-content: center; gap: 0.35rem; align-items: center; }
+                .dlt-ball {
+                  width: 2.2rem; height: 2.2rem;
+                  border-radius: 50%;
+                  display: flex; align-items: center; justify-content: center;
+                  color: #fff; font-weight: 700; font-size: 0.85rem;
+                  line-height: 1;
+                }
+                .dlt-front { background: #e5484d; }
+                .dlt-back { background: #2b6cb0; }
+                .dlt-divider { color: var(--color-subdue); font-weight: 700; }
+                .dlt-result { font-weight: 700; margin-top: 0.45rem; text-align: center; }
+                .dlt-win { color: #e5484d; }
+                .dlt-lose { color: var(--color-subdue); }
+              </style>
+              <div class="dlt-row">
+                <div class="dlt-row-label">我的号码</div>
+                <div class="dlt-balls">
+                  {{ range .JSON.Array "my_front" }}<div class="dlt-ball dlt-front">{{ .String "" }}</div>{{ end }}
+                  <span class="dlt-divider">+</span>
+                  {{ range .JSON.Array "my_back" }}<div class="dlt-ball dlt-back">{{ .String "" }}</div>{{ end }}
+                </div>
+              </div>
+              {{ if ne ( .JSON.String "status" ) "ok" }}
+                {{ $msg := .JSON.String "message" }}
+                <div class="color-subdue size-h5">{{ if $msg }}{{ $msg }}{{ else }}暂无数据{{ end }}</div>
+              {{ else }}
+                <div class="dlt-period" style="text-align:center;">第 {{ .JSON.String "issueno" }} 期 · {{ .JSON.String "opendate" }}</div>
+                <div class="dlt-row">
+                  <div class="dlt-row-label">开奖号码</div>
+                  <div class="dlt-balls">
+                    {{ range .JSON.Array "front" }}<div class="dlt-ball dlt-front">{{ .String "" }}</div>{{ end }}
+                    <span class="dlt-divider">+</span>
+                    {{ range .JSON.Array "back" }}<div class="dlt-ball dlt-back">{{ .String "" }}</div>{{ end }}
+                  </div>
+                </div>
+                {{ $prize := .JSON.String "prize" }}
+                {{ if $prize }}
+                  <div class="dlt-result dlt-win">🎉 恭喜中奖：{{ $prize }}（前区中 {{ .JSON.String "front_hit" }} / 后区中 {{ .JSON.String "back_hit" }}）</div>
+                {{ else }}
+                  <div class="dlt-result dlt-lose">很遗憾，下次再来</div>
+                {{ end }}
+              {{ end }}
+      - size: full
+        widgets:
+          - type: custom-api
+            title: 常用入口
+            cache: 24h
+            url: https://api.github.com/rate_limit
+            template: |
+              <style>
+                .quick-links-grid {
+                  display: grid;
+                  grid-template-columns: repeat(5, minmax(0, 1fr));
+                  gap: 0.55rem;
+                }
+                .quick-link {
+                  display: flex;
+                  min-width: 0;
+                  min-height: 5.2rem;
+                  flex-direction: column;
+                  align-items: center;
+                  justify-content: center;
+                  gap: 0.42rem;
+                  padding: 0.55rem 0.3rem;
+                  border: 1px solid var(--color-separator);
+                  border-radius: 6px;
+                  color: var(--color-text-highlight);
+                  text-decoration: none;
+                  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+                }
+                .quick-link:hover, .quick-link:focus-visible {
+                  background: var(--color-background);
+                  border-color: var(--color-primary);
+                  color: var(--color-primary);
+                  outline: none;
+                  transform: translateY(-1px);
+                }
+                .quick-link-icon {
+                  width: 2rem;
+                  height: 2rem;
+                  object-fit: contain;
+                }
+                .quick-link-label {
+                  max-width: 100%;
+                  overflow: hidden;
+                  color: inherit;
+                  font-size: 0.78rem;
+                  line-height: 1.2;
+                  text-align: center;
+                  text-overflow: ellipsis;
+                  white-space: nowrap;
+                }
+                @media (max-width: 700px) {
+                  .quick-links-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+                }
+              </style>
+              <div class="quick-links-grid">
+                <a class="quick-link" href="http://192.168.99.108/wui/index.html" target="_blank" rel="noreferrer" title="OA 系统">
+                  <img class="quick-link-icon" src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/microsoft-sharepoint.png" alt="">
+                  <span class="quick-link-label">OA 系统</span>
+                </a>
+                <a class="quick-link" href="https://app.todoist.com/app/" target="_blank" rel="noreferrer" title="Todoist">
+                  <img class="quick-link-icon" src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/todoist.png" alt="">
+                  <span class="quick-link-label">Todoist</span>
+                </a>
+                <a class="quick-link" href="https://www.google.com/" target="_blank" rel="noreferrer" title="Google">
+                  <img class="quick-link-icon" src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/google.png" alt="">
+                  <span class="quick-link-label">Google</span>
+                </a>
+                <a class="quick-link" href="https://chatgpt.com/" target="_blank" rel="noreferrer" title="ChatGPT">
+                  <img class="quick-link-icon" src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/openai.png" alt="">
+                  <span class="quick-link-label">ChatGPT</span>
+                </a>
+                <a class="quick-link" href="https://chat.deepseek.com/" target="_blank" rel="noreferrer" title="DeepSeek">
+                  <img class="quick-link-icon" src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/deepseek.png" alt="">
+                  <span class="quick-link-label">DeepSeek</span>
+                </a>
+                <a class="quick-link" href="https://www.reddit.com/" target="_blank" rel="noreferrer" title="Reddit">
+                  <img class="quick-link-icon" src="https://www.google.com/s2/favicons?domain=reddit.com&sz=128" alt="">
+                  <span class="quick-link-label">Reddit</span>
+                </a>
+                <a class="quick-link" href="https://github.com/" target="_blank" rel="noreferrer" title="GitHub">
+                  <img class="quick-link-icon" src="https://www.google.com/s2/favicons?domain=github.com&sz=128" alt="">
+                  <span class="quick-link-label">GitHub</span>
+                </a>
+                <a class="quick-link" href="https://www.youtube.com/" target="_blank" rel="noreferrer" title="YouTube">
+                  <img class="quick-link-icon" src="https://www.google.com/s2/favicons?domain=youtube.com&sz=128" alt="">
+                  <span class="quick-link-label">YouTube</span>
+                </a>
+                <a class="quick-link" href="https://nimstats.maurodruwel.be/" target="_blank" rel="noreferrer" title="NIMStatus">
+                  <img class="quick-link-icon" src="https://www.google.com/s2/favicons?domain=nimstats.maurodruwel.be&sz=128" alt="">
+                  <span class="quick-link-label">NIMStatus</span>
+                </a>
+                <a class="quick-link" href="https://fluxlane.cn/dashboard" target="_blank" rel="noreferrer" title="FluxLane">
+                  <img class="quick-link-icon" src="https://www.google.com/s2/favicons?domain=fluxlane.cn&sz=128" alt="">
+                  <span class="quick-link-label">FluxLane</span>
+                </a>
+              </div>
+          - type: custom-api
+            title: 工作重点
+            cache: 5m
+            url: https://api.todoist.com/api/v1/tasks?filter=today
+            method: GET
+            headers:
+              Authorization: Bearer ${TODOIST_API_TOKEN}
+            template: |
+              <style>
+                .task-row-todoist {
+                  display: flex;
+                  align-items: center;
+                  gap: 16px;
+                }
+                .task-checkbox-todoist {
+                  width: 18px;
+                  height: 18px;
+                  border: 2px solid currentColor;
+                  border-radius: 50%;
+                  flex-shrink: 0;
+                  cursor: pointer;
+                  opacity: 0.6;
+                  background: transparent;
+                  padding: 0;
+                  transition: opacity 0.2s;
+                }
+                .task-checkbox-todoist:hover {
+                  opacity: 1;
+                }
+                .task-content-wrapper-todoist {
+                  flex: 1;
+                  min-width: 0;
+                }
+                .task-row-todoist.completing {
+                  opacity: 0.5;
+                  pointer-events: none;
+                }
+              </style>
+              {{ $tasks := .JSON.Array "results" }}
+              {{ if $tasks }}
+                <ul class="list list-gap-14 collapsible-container" data-collapse-after="8">
+                  {{ range $tasks }}
+                    <li>
+                      <div class="task-row-todoist">
+                        <button class="task-checkbox-todoist"
+                                onclick="(function(btn) {
+                                  const taskRow = btn.closest('.task-row-todoist');
+                                  taskRow.classList.add('completing');
+                                  fetch('https://api.todoist.com/api/v1/tasks/{{ .String "id" }}/close', {
+                                    method: 'POST',
+                                    headers: { 'Authorization': 'Bearer ${TODOIST_API_TOKEN}' }
+                                  })
+                                  .then(r => {
+                                    if (r.ok) {
+                                      const li = btn.closest('li');
+                                      li.style.transition = 'opacity 0.3s';
+                                      li.style.opacity = '0';
+                                      setTimeout(() => li.remove(), 300);
+                                    } else {
+                                      taskRow.classList.remove('completing');
+                                      r.text().then(t => console.error('Failed:', t));
+                                    }
+                                  })
+                                  .catch(e => {
+                                    taskRow.classList.remove('completing');
+                                    console.error('Error:', e);
+                                  });
+                                })(this); return false;"
+                                title="Complete task"></button>
+                        <div class="task-content-wrapper-todoist">
+                          <a class="size-h3 color-primary" href="https://app.todoist.com/app/task/{{ .String "id" }}" target="_blank">
+                            {{ .String "content" }}
+                          </a>
+                          <ul class="list-horizontal-text">
+                            {{ $priority := .Int "priority" }}
+                            {{ if eq $priority 4 }}
+                              <li>P1</li>
+                            {{ else if eq $priority 3 }}
+                              <li>P2</li>
+                            {{ else if eq $priority 2 }}
+                              <li>P3</li>
+                            {{ else }}
+                              <li>P4</li>
+                            {{ end }}
+                            {{ if .String "project_id" }}
+                              <li data-project-id="{{ .String "project_id" }}">{{ .String "project_id" }}</li>
+                            {{ end }}
+                          </ul>
+                        </div>
+                      </div>
+                    </li>
+                  {{ end }}
+                </ul>
+                <img src="x" onerror="(function() {
+                  fetch('https://api.todoist.com/api/v1/projects', {
+                    headers: { 'Authorization': 'Bearer ${TODOIST_API_TOKEN}' }
+                  })
+                  .then(r => r.json())
+                  .then(projects => {
+                    const projectMap = {};
+                    projects.forEach(p => projectMap[String(p.id)] = p.name);
+                    document.querySelectorAll('[data-project-id]').forEach(el => {
+                      const projectName = projectMap[String(el.getAttribute('data-project-id'))];
+                      if (projectName) el.textContent = projectName;
+                    });
+                  });
+                })(); this.parentNode.removeChild(this);" style="display:none;">
+              {{ else }}
+                <p class="color-subdue">No tasks due today</p>
+              {{ end }}
+      - size: small
+        widgets:
+          - type: search
+            title: 百度搜索
+            search-engine: https://www.baidu.com/s?wd={QUERY}
+            new-tab: true
+            target: _blank
+            placeholder: 搜索百度
+          - type: server-stats
+            title: 服务器状态
+            servers:
+              - type: local
+                name: dclaw.top
+                hide-swap: false
+                hide-mountpoints-by-default: true
+                mountpoints:
+                  "/":
+                    name: 根分区
+                    hide: false
+                  "/boot":
+                    name: Boot
+                    hide: false
+                  "/boot/efi":
+                    name: EFI
+                    hide: false
+
+          - type: custom-api
+            title: 空气质量
+            cache: 10m
+            url: https://api.waqi.info/feed/geo:32.486667;119.900000/?token=${WAQI_TOKEN}
+            template: |
+              {{ $aqi := printf "%03s" (.JSON.String "data.aqi") }}
+              {{ $aqiraw := .JSON.String "data.aqi" }}
+              {{ $updated := .JSON.String "data.time.iso" }}
+              {{ $humidity := .JSON.String "data.iaqi.h.v" }}
+              {{ $ozone := .JSON.String "data.iaqi.o3.v" }}
+              {{ $pm25 := .JSON.String "data.iaqi.pm25.v" }}
+              {{ $pressure := .JSON.String "data.iaqi.p.v" }}
+
+              <div class="flex justify-between">
+                <div class="size-h5">
+                  {{ if le $aqi "050" }}
+                    <div class="color-positive">空气优</div>
+                  {{ else if le $aqi "100" }}
+                    <div class="color-primary">空气良</div>
+                  {{ else }}
+                    <div class="color-negative">注意空气质量</div>
+                  {{ end }}
+                </div>
+              </div>
+
+              <div class="color-highlight size-h2">AQI: {{ $aqiraw }}</div>
+              <div style="border-bottom: 1px solid; margin-block: 10px;"></div>
+
+              <div class="margin-block-2">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                  <div>
+                    <div class="size-h3 color-highlight">{{ $humidity }}%</div>
+                    <div class="size-h6">湿度</div>
+                  </div>
+                  <div>
+                    <div class="size-h3 color-highlight">{{ $ozone }} μg/m³</div>
+                    <div class="size-h6">臭氧</div>
+                  </div>
+                  <div>
+                    <div class="size-h3 color-highlight">{{ $pm25 }} μg/m³</div>
+                    <div class="size-h6">PM2.5</div>
+                  </div>
+                  <div>
+                    <div class="size-h3 color-highlight">{{ $pressure }} hPa</div>
+                    <div class="size-h6">气压</div>
+                  </div>
+                </div>
+
+                <div class="size-h6" style="margin-top: 10px;">更新于 {{ slice $updated 11 16 }}</div>
+              </div>
+          - type: custom-api
+            title: 纪念日倒计时
+            cache: 1h
+            url: http://127.0.0.1:8898
+            template: |
+              {{ $items := .JSON.Array "items" }}
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+              {{ range $items }}
+                {{ $name := .String "name" }}
+                {{ $days := .Int "days" }}
+                {{ $emoji := "📅" }}
+                {{ if eq $name "结婚纪念日" }}{{ $emoji = "💍" }}{{ else if eq $name "老婆生日" }}{{ $emoji = "🎂" }}{{ else if eq $name "儿子生日" }}{{ $emoji = "👶" }}{{ else if eq $name "我的生日" }}{{ $emoji = "🎂" }}{{ end }}
+                <div style="text-align:center;">
+                  <div class="size-h5">{{ $emoji }} {{ $name }}</div>
+                  {{ if le $days 7 }}
+                    <div class="size-h3" style="color:var(--color-negative);">{{ $days }} 天</div>
+                  {{ else if le $days 30 }}
+                    <div class="size-h3" style="color:var(--color-primary);">{{ $days }} 天</div>
+                  {{ else }}
+                    <div class="size-h3 color-highlight">{{ $days }} 天</div>
+                  {{ end }}
+                </div>
+              {{ end }}
+              </div>
+  - name: Personal
+    slug: personal
+    columns:
+      - size: small
+        widgets:
+          - type: group
+            widgets:
+              - type: custom-api
+                title: 今日进度
+                body-type: string
+                skip-json-validation: true
+                cache: 1s
+                template: |
+                  {{ $t := now }}
+                  {{ $seconds := add (mul $t.Hour 3600) (mul $t.Minute 60) | add $t.Second }}
+                  {{ $progress := div (mul $seconds 100.0) 86400.0 }}
+                  {{ $gradient := "" }}
+                  {{ if lt $progress 10.0 }}
+                    {{ $gradient = "#70a1ff" }}
+                  {{ else if lt $progress 25.0 }}
+                    {{ $gradient = "#ff6b6b, #70a1ff" }}
+                  {{ else if lt $progress 50.0 }}
+                    {{ $gradient = "#ff6b6b, #f8e71c, #7ed6df" }}
+                  {{ else }}
+                    {{ $gradient = "#ff6b6b, #f8e71c, #7ed6df, #70a1ff" }}
+                  {{ end }}
+                  <div style="text-align:center;"><div style="height:12px;background:var(--color-separator);border:1px solid var(--color-separator);border-radius:10px;overflow:hidden;"><div style="height:100%;width:{{ $progress }}%;background:linear-gradient(90deg, {{ $gradient }});border-radius:10px;"></div></div><div class="size-h5" style="margin-top:0.35rem;">今日已过去 {{ printf "%.1f" $progress }}%</div></div>
+              - type: custom-api
+                title: 本月进度
+                body-type: string
+                skip-json-validation: true
+                cache: 1s
+                template: |
+                  {{ $t := now }}
+                  {{ $days := 31 }}
+                  {{ if eq $t.Month 2 }}{{ $days = 28 }}{{ end }}
+                  {{ if or (eq $t.Month 4) (eq $t.Month 6) (eq $t.Month 9) (eq $t.Month 11) }}{{ $days = 30 }}{{ end }}
+                  {{ if and (eq $t.Month 2) (eq (mod $t.Year 4) 0) }}{{ $days = 29 }}{{ end }}
+                  {{ $seconds := add (mul $t.Hour 3600) (mul $t.Minute 60) | add $t.Second }}
+                  {{ $progress := mul (div (add (sub $t.Day 1) (div $seconds 86400.0)) $days) 100.0 }}
+                  {{ $gradient := "" }}
+                  {{ if lt $progress 10.0 }}
+                    {{ $gradient = "#70a1ff" }}
+                  {{ else if lt $progress 25.0 }}
+                    {{ $gradient = "#ff6b6b, #70a1ff" }}
+                  {{ else if lt $progress 50.0 }}
+                    {{ $gradient = "#ff6b6b, #f8e71c, #7ed6df" }}
+                  {{ else }}
+                    {{ $gradient = "#ff6b6b, #f8e71c, #7ed6df, #70a1ff" }}
+                  {{ end }}
+                  <div style="text-align:center;"><div style="height:12px;background:var(--color-separator);border:1px solid var(--color-separator);border-radius:10px;overflow:hidden;"><div style="height:100%;width:{{ $progress }}%;background:linear-gradient(90deg, {{ $gradient }});border-radius:10px;"></div></div><div class="size-h5" style="margin-top:0.35rem;">本月已过去 {{ printf "%.1f" $progress }}%</div></div>
+              - type: custom-api
+                title: 年度进度
+                body-type: string
+                skip-json-validation: true
+                cache: 1s
+                template: |
+                  {{ $t := now }}
+                  {{ $days := 365 }}
+                  {{ if eq (mod $t.Year 4) 0 }}{{ $days = 366 }}{{ end }}
+                  {{ $today := add (mul (sub $t.YearDay 1) 86400) (add (mul $t.Hour 3600) (mul $t.Minute 60) | add $t.Second) }}
+                  {{ $progress := div (mul $today 100.0) (mul $days 86400.0) }}
+                  {{ $gradient := "" }}
+                  {{ if lt $progress 10.0 }}
+                    {{ $gradient = "#70a1ff" }}
+                  {{ else if lt $progress 25.0 }}
+                    {{ $gradient = "#ff6b6b, #70a1ff" }}
+                  {{ else if lt $progress 50.0 }}
+                    {{ $gradient = "#ff6b6b, #f8e71c, #7ed6df" }}
+                  {{ else }}
+                    {{ $gradient = "#ff6b6b, #f8e71c, #7ed6df, #70a1ff" }}
+                  {{ end }}
+                  <div style="text-align:center;"><div style="height:12px;background:var(--color-separator);border:1px solid var(--color-separator);border-radius:10px;overflow:hidden;"><div style="height:100%;width:{{ $progress }}%;background:linear-gradient(90deg, {{ $gradient }});border-radius:10px;"></div></div><div class="size-h5" style="margin-top:0.35rem;">今年已过去 {{ printf "%.1f" $progress }}%</div></div>
+          - type: custom-api
+            title: 今日油价
+            cache: 5m
+            url: http://127.0.0.1:8903/oil
+            template: |
+              {{ if eq (.JSON.String "status") "ok" }}
+                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.45rem;text-align:center;">
+                  <div><div class="color-subdue size-h5">92号</div><div class="size-h3" style="color:var(--color-positive);">¥{{ .JSON.String "gas92" }}</div></div>
+                  <div><div class="color-subdue size-h5">95号</div><div class="size-h3" style="color:var(--color-positive);">¥{{ .JSON.String "gas95" }}</div></div>
+                  <div><div class="color-subdue size-h5">98号</div><div class="size-h3" style="color:var(--color-positive);">¥{{ .JSON.String "gas98" }}</div></div>
+                  <div><div class="color-subdue size-h5">0号柴油</div><div class="size-h3" style="color:var(--color-positive);">¥{{ .JSON.String "diesel" }}</div></div>
+                </div>
+              {{ else }}
+                <div class="color-subdue size-h5">{{ .JSON.String "message" }}</div>
+              {{ end }}
+          - type: custom-api
+            title: AI 中转站余额
+            cache: 5m
+            url: https://www.dclaw.top/ai-balance/balance
+            template: |
+              {{ $rem := .JSON.Float "data.remaining" }}
+              {{ $used := .JSON.Float "data.used" }}
+              {{ $unit := .JSON.String "data.unit" }}
+              {{ $today := .JSON.Float "data.today" }}
+              <div style="display:flex; flex-direction:column; gap:0.5em;">
+                <div style="display:flex; align-items:baseline; gap:0.5em;">
+                  <span style="font-size:2.2em; font-weight:bold; line-height:1;">${{ printf "%.2f" $rem }}</span>
+                  <span style="font-size:0.85em; color:var(--color-subdue);">{{ $unit }}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:0.8em; color:var(--color-subdue);">
+                  <span>已用 ${{ printf "%.4f" $used }}</span>
+                  <span>今日 ${{ printf "%.4f" $today }}</span>
+                </div>
+              </div>
+          - type: custom-api
+            title: 江苏省城市足球联赛
+            cache: 1h
+            url: https://apis.juhe.cn/fapig/football/rank?key=${JUHE_FOOTBALL_KEY}&type=jiangsu
+            template: |
+              {{ $title := .JSON.String "result.title" }}
+              {{ $season := .JSON.String "result.duration" }}
+              {{ $rows := .JSON.Array "result.ranking" }}
+              <div style="font-size:0.82em;">
+                <div style="display:grid; grid-template-columns:24px minmax(0,1.6fr) repeat(6,28px); gap:4px; align-items:center; padding:0.3em 0; border-bottom:1px solid var(--color-separator); color:var(--color-subdue); font-size:0.78em;">
+                  <div style="text-align:center;">#</div><div>球队</div><div style="text-align:center;">赛</div><div style="text-align:center;">胜</div><div style="text-align:center;">平</div><div style="text-align:center;">负</div><div style="text-align:center;">净</div><div style="text-align:center;">分</div>
+                </div>
+                {{ range $rows }}
+                  <div style="display:grid; grid-template-columns:24px minmax(0,1.6fr) repeat(6,28px); gap:4px; align-items:center; min-height:2em; padding:0.22em 0; border-bottom:1px solid color-mix(in srgb, var(--color-separator) 55%, transparent);">
+                    <div style="text-align:center; font-weight:600;">{{ .String "rank_id" }}</div>
+                    <div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ .String "team" }}</div>
+                    <div style="text-align:center;">{{ .String "matches" }}</div>
+                    <div style="text-align:center;">{{ .String "wins" }}</div>
+                    <div style="text-align:center;">{{ .String "draw" }}</div>
+                    <div style="text-align:center;">{{ .String "losses" }}</div>
+                    <div style="text-align:center;">{{ .String "goal_difference" }}</div>
+                    <div style="text-align:center; font-weight:700; color:var(--color-primary);">{{ .String "scores" }}</div>
+                  </div>
+                {{ end }}
+              </div>
+      - size: full
+        widgets:
+          - type: markets
+            title: 全球市场
+            cache: 5m
+            markets:
+              - symbol: SPY
+                name: 标普500
+              - symbol: CL=F
+                name: WTI原油
+              - symbol: GC=F
+                name: 黄金
+          - type: custom-api
+            title: Polymarket 热门盘口
+            cache: 5m
+            url: http://127.0.0.1:8908/polymarket
+            template: |
+              <style>
+                .pm-viewport { overflow: hidden; width: 100%; }
+                .pm-track { display: flex; width: 100%; animation: pm-slide 28s infinite; }
+                .pm-viewport:hover .pm-track { animation-play-state: paused; }
+                .pm-card { display: flex; flex: 0 0 100%; flex-direction: column; box-sizing: border-box; width: 100%; padding: 0.3rem 0.8rem 0.5rem 0; border-bottom: 1px solid var(--color-separator); text-decoration: none; }
+                .pm-title { color: var(--color-text-highlight); font-size: var(--font-size-h4); line-height: 1.45; }
+                .pm-main { display: flex; align-items: baseline; justify-content: space-between; gap: 0.8rem; margin-top: 0.45rem; }
+                .pm-label { flex: 1 1 auto; overflow: hidden; color: var(--color-subdue); font-size: var(--font-size-h5); text-overflow: ellipsis; white-space: nowrap; }
+                .pm-prob { flex: 0 0 auto; color: #3b82f6; font-size: var(--font-size-h1); font-weight: 700; }
+                .pm-bar { height: 0.55rem; margin-top: 0.4rem; overflow: hidden; border-radius: 6px; background: var(--color-separator); }
+                .pm-bar-fill { height: 100%; background: #3b82f6; border-radius: 6px; }
+                .pm-meta { display: flex; flex-wrap: wrap; gap: 0.2rem 1.1rem; margin-top: 0.5rem; color: var(--color-subdue); font-size: var(--font-size-h6); }
+                .pm-alts { height: 1.7rem; overflow: hidden; margin-top: 0.35rem; color: var(--color-subdue); font-size: var(--font-size-h6); line-height: 1.6; }
+                .pm-up { color: #22c55e; }
+                .pm-down { color: #ef4444; }
+                @keyframes pm-slide {
+                  0% { transform: translateX(0); }
+                  2.86% { transform: translateX(-100%); }
+                  14.29% { transform: translateX(-100%); }
+                  17.14% { transform: translateX(-200%); }
+                  28.57% { transform: translateX(-200%); }
+                  31.43% { transform: translateX(-300%); }
+                  42.86% { transform: translateX(-300%); }
+                  45.71% { transform: translateX(-400%); }
+                  57.14% { transform: translateX(-400%); }
+                  60% { transform: translateX(-500%); }
+                  71.43% { transform: translateX(-500%); }
+                  74.29% { transform: translateX(-600%); }
+                  85.71% { transform: translateX(-600%); }
+                  88.57% { transform: translateX(-700%); }
+                  100% { transform: translateX(-700%); }
+                }
+                @media (prefers-reduced-motion: reduce) {
+                  .pm-viewport { overflow-x: auto; }
+                  .pm-track { animation: none; }
+                }
+              </style>
+              {{ $markets := .JSON.Array "markets" }}
+              {{ if eq (len $markets) 0 }}
+                <p class="color-subdue">首页盘口暂时无法加载。</p>
+              {{ else }}
+                <div class="pm-viewport">
+                  <div class="pm-track">
+                    {{ range $markets }}
+                      <a class="pm-card" href="{{ .String "url" }}" target="_blank" rel="noreferrer">
+                        <div class="pm-title">{{ .String "title" }}</div>
+                        <div class="pm-main"><span class="pm-label">{{ .String "label" }}</span><span class="pm-prob">{{ .Float "prob" | printf "%.0f" }}%</span></div>
+                        <div class="pm-bar"><div class="pm-bar-fill" style="width:{{ .Float "prob" }}%;"></div></div>
+                        <div class="pm-meta"><span>成交 {{ .String "volume_text" }}</span>{{ if ne (.String "delta_text") "" }}<span class="{{ .String "delta_class" }}">{{ .String "delta_text" }}</span>{{ end }}<span>截止 {{ .String "end_text" }}</span></div>
+                        <div class="pm-alts">{{ .String "alts_text" }}</div>
+                      </a>
+                    {{ end }}
+                    {{ range $markets }}
+                      <a class="pm-card" href="{{ .String "url" }}" target="_blank" rel="noreferrer">
+                        <div class="pm-title">{{ .String "title" }}</div>
+                        <div class="pm-main"><span class="pm-label">{{ .String "label" }}</span><span class="pm-prob">{{ .Float "prob" | printf "%.0f" }}%</span></div>
+                        <div class="pm-bar"><div class="pm-bar-fill" style="width:{{ .Float "prob" }}%;"></div></div>
+                        <div class="pm-meta"><span>成交 {{ .String "volume_text" }}</span>{{ if ne (.String "delta_text") "" }}<span class="{{ .String "delta_class" }}">{{ .String "delta_text" }}</span>{{ end }}<span>截止 {{ .String "end_text" }}</span></div>
+                        <div class="pm-alts">{{ .String "alts_text" }}</div>
+                      </a>
+                    {{ end }}
+                  </div>
+                </div>
+              {{ end }}
+          - type: custom-api
+            title: 历史上的今天
+            cache: 6h
+            url: https://zh.wikipedia.org/api/rest_v1/page/summary/Main_Page
+            headers:
+              Accept: application/json
+              Accept-Language: zh-cn
+              User-Agent: glance-dashboard/1.0 (+https://github.com/glanceapp/glance)
+            template: |
+              {{ $month := now | formatTime "01" }}
+              {{ $day := now | formatTime "02" }}
+              {{ $url := concat "https://zh.wikipedia.org/api/rest_v1/feed/onthisday/selected/" $month "/" $day }}
+              {{ $resp := newRequest $url | withHeader "Accept" "application/json" | withHeader "Accept-Language" "zh-cn" | withHeader "User-Agent" "glance-dashboard/1.0 (+https://github.com/glanceapp/glance)" | getResponse }}
+              {{ if ne $resp.Response.StatusCode 200 }}
+                <p class="color-negative">Wikipedia 数据加载失败（{{ $resp.Response.Status }}）</p>
+              {{ else }}
+                {{ $events := $resp.JSON.Array "selected" }}
+                {{ if eq (len $events) 0 }}
+                  <p class="color-subdue">今天没有找到精选条目。</p>
+                {{ else }}
+                  <ul class="list list-gap-14 collapsible-container" data-collapse-after="5">
+                    {{ range $events }}
+                      {{ $year := .Int "year" }}
+                      {{ $text := .String "text" }}
+                      {{ $pages := .Array "pages" }}
+                      {{ $link := "" }}
+                      {{ if gt (len $pages) 0 }}
+                        {{ $firstPage := index $pages 0 }}
+                        {{ $link = $firstPage.String "content_urls.desktop.page" }}
+                      {{ end }}
+                      <li>
+                        <div class="flex items-baseline" style="gap: 0.6rem;">
+                          <span class="color-primary size-h4" style="flex: 0 0 auto; min-width: 3rem;">{{ $year }}</span>
+                          <span class="size-h5" style="flex: 1 1 auto;">
+                            {{ if ne $link "" }}
+                              <a href="{{ $link }}" target="_blank" rel="noreferrer" class="color-highlight">{{ $text }}</a>
+                            {{ else }}
+                              {{ $text }}
+                            {{ end }}
+                          </span>
+                        </div>
+                      </li>
+                    {{ end }}
+                  </ul>
+                {{ end }}
+              {{ end }}
+      - size: small
+        widgets:
+          - type: custom-api
+            title: 美股恐慌指数
+            cache: 5m
+            url: http://127.0.0.1:8897
+            template: |
+              {{ $value := .JSON.Float "value" }}
+              {{ $previous := .JSON.Float "previous" }}
+              {{ $change := .JSON.Float "change" }}
+              {{ $position := $value }}
+              {{ if gt $position 50.0 }}{{ $position = 50.0 }}{{ end }}
+              {{ $color := "#22c55e" }}
+              {{ $label := "低波动" }}
+              {{ $emoji := "😌" }}
+              {{ if ge $value 15.0 }}{{ $color = "#eab308" }}{{ $label = "正常" }}{{ $emoji = "🙂" }}{{ end }}
+              {{ if ge $value 20.0 }}{{ $color = "#f97316" }}{{ $label = "市场紧张" }}{{ $emoji = "😟" }}{{ end }}
+              {{ if ge $value 30.0 }}{{ $color = "#ef4444" }}{{ $label = "高风险" }}{{ $emoji = "😱" }}{{ end }}
+              <div style="display:flex; flex-direction:column; gap:0.75em;">
+                <div style="display:flex; align-items:center; gap:0.7em;">
+                  <span style="font-size:2.7em; font-weight:bold; color:{{ $color }}; line-height:1;">{{ $value | printf "%.2f" }}</span>
+                  <div style="display:flex; flex-direction:column;">
+                    <span style="font-size:1.1em; font-weight:bold; color:{{ $color }};">{{ $emoji }} {{ $label }}</span>
+                    <span style="font-size:0.78em; color:var(--color-subdue);">前值 {{ $previous | printf "%.2f" }}
+                      {{ if gt $change 0.0 }}<span style="color:#ef4444;">▲ {{ $change | printf "%.2f" }}</span>{{ else if lt $change 0.0 }}<span style="color:#22c55e;">▼ {{ $change | printf "%.2f" }}</span>{{ else }}→ 0.00{{ end }}
+                    </span>
+                  </div>
+                </div>
+                <div style="position:relative; height:10px; border-radius:5px; background:linear-gradient(to right, #22c55e 0%, #eab308 30%, #f97316 50%, #ef4444 60%, #991b1b 100%);">
+                  <div style="position:absolute; left:calc({{ $position }}% - 6px); top:50%; transform:translateY(-50%); width:13px; height:13px; background:white; border-radius:50%; border:2px solid {{ $color }}; box-shadow:0 0 4px rgba(0,0,0,0.5);"></div>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:0.78em; color:var(--color-subdue);">
+                  <span>低波动 &lt;15</span><span>正常 15</span><span>紧张 20</span><span>高风险 ≥30</span>
+                </div>
+              </div>
+          - type: custom-api
+            title: 投资组合
+            cache: 5m
+            url: http://127.0.0.1:8907/portfolio
+            template: |
+              {{ $profit := .JSON.Float "profit" }}
+              {{ $profitPct := .JSON.Float "profit_pct" }}
+              {{ $today := .JSON.Float "today_profit" }}
+              {{ $todayPct := .JSON.Float "today_profit_pct" }}
+              {{ $cash := .JSON.Float "cash" }}
+              {{ $market := .JSON.Float "market_value" }}
+              {{ $assets := .JSON.Float "total_assets" }}
+              <div style="display:flex; flex-direction:column; gap:0.8em;">
+                <div style="text-align:center;">
+                  <div class="color-subdue size-h5">总资产</div>
+                  <div style="font-size:2em; font-weight:700; line-height:1.15;">¥{{ printf "%.2f" $assets }}</div>
+                </div>
+                <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:0.35em; text-align:center;">
+                  <div>
+                    <div class="color-subdue size-h6">今日</div>
+                    <div class="{{ if ge $today 0.0 }}color-positive{{ else }}color-negative{{ end }}" style="font-weight:700;">{{ if ge $today 0.0 }}+{{ end }}¥{{ printf "%.2f" $today }}</div>
+                    <div class="{{ if ge $todayPct 0.0 }}color-positive{{ else }}color-negative{{ end }} size-h6">{{ if ge $todayPct 0.0 }}+{{ end }}{{ printf "%.2f" $todayPct }}%</div>
+                  </div>
+                  <div>
+                    <div class="color-subdue size-h6">总浮盈亏</div>
+                    <div class="{{ if ge $profit 0.0 }}color-positive{{ else }}color-negative{{ end }}" style="font-weight:700;">{{ if ge $profit 0.0 }}+{{ end }}¥{{ printf "%.2f" $profit }}</div>
+                    <div class="{{ if ge $profitPct 0.0 }}color-positive{{ else }}color-negative{{ end }} size-h6">{{ if ge $profitPct 0.0 }}+{{ end }}{{ printf "%.2f" $profitPct }}%</div>
+                  </div>
+                  <div>
+                    <div class="color-subdue size-h6">现金</div>
+                    <div style="font-weight:700;">¥{{ printf "%.2f" $cash }}</div>
+                    <div class="color-subdue size-h6">持仓 ¥{{ printf "%.0f" $market }}</div>
+                  </div>
+                </div>
+              </div>
+          - type: custom-api
+            title: 自选股
+            cache: 1m
+            url: http://127.0.0.1:8900/stocks
+            template: |
+              {{ $stocks := .JSON.Array "stocks" }}
+              <div class="list-gap-20 list-with-separator">
+                {{ range $stocks }}
+                  {{ $pct := .Float "percent" }}
+                  {{ $change := .Float "change" }}
+                  <div class="flex items-center gap-15">
+                    <div class="min-width-0">
+                      <a class="color-highlight size-h3 block text-truncate" href="{{ .String "url" }}" target="_blank" rel="noreferrer">{{ .String "symbol" }}</a>
+                      <div class="text-truncate">{{ .String "name" }}</div>
+                    </div>
+                    <a class="market-chart" href="{{ .String "url" }}" target="_blank" rel="noreferrer">
+                      <img src="{{ .String "chart_url" }}" alt="" style="width:6.5rem;height:3.25rem;display:block;">
+                    </a>
+                    <div class="market-values shrink-0">
+                      {{ if ge $pct 0.0 }}<div class="size-h3 text-right color-positive">+{{ printf "%.2f" $pct }}%</div>{{ else }}<div class="size-h3 text-right color-negative">{{ printf "%.2f" $pct }}%</div>{{ end }}
+                      {{ $price := .Float "price" }}
+                      <div class="text-right" title="CNY">¥{{ printf "%.2f" $price }}</div>
+                    </div>
+                  </div>
+                {{ end }}
+              </div>

@@ -1,0 +1,14 @@
+[Unit]
+Description=Lunar calendar countdown service for Glance
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/local/lib/node-v24/bin/node /opt/lunar-calendar/countdown.js
+Restart=always
+RestartSec=10
+User=glance
+Group=glance
+
+[Install]
+WantedBy=multi-user.target

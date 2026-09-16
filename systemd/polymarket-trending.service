@@ -1,0 +1,15 @@
+[Unit]
+Description=Read-only Polymarket trending markets adapter
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/bin/python3 /opt/polymarket_trending.py
+Restart=always
+RestartSec=10
+User=glance
+Group=glance
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

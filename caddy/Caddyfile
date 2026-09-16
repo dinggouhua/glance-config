@@ -1,0 +1,16 @@
+# Glance 面板
+dclaw.top, www.dclaw.top {
+    handle_path /oil-price/* {
+        reverse_proxy 127.0.0.1:8903
+    }
+
+    handle /stock-chart/* {
+        reverse_proxy 127.0.0.1:8900
+    }
+
+    handle_path /ai-balance/* {
+        reverse_proxy 127.0.0.1:8906
+    }
+
+    reverse_proxy 127.0.0.1:8080
+}

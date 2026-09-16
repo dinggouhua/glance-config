@@ -1,0 +1,14 @@
+[Unit]
+Description=VIX fear index JSON service for Glance
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/bin/python3 /opt/vix.py
+Restart=always
+RestartSec=30
+User=glance
+Group=glance
+
+[Install]
+WantedBy=multi-user.target

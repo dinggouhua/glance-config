@@ -1,0 +1,15 @@
+[Unit]
+Description=A-share market overview adapter for Glance
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/bin/python3 /opt/market_overview.py
+Restart=always
+RestartSec=15
+User=glance
+Group=glance
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,16 @@
+[Unit]
+Description=Juhe Jiangsu oil price adapter for Glance
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+EnvironmentFile=/etc/systemd/system/glance-waqi.env
+ExecStart=/usr/bin/python3 /opt/oil_price.py
+Restart=always
+RestartSec=15
+User=glance
+Group=glance
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
