@@ -1,6 +1,6 @@
 # glance-config
 
-自托管 Glance 个人工作台（https://www.dclaw.top）的配置与本地适配器，做 Git 版本管理。
+自托管 Glance 个人工作台的配置与本地适配器，做 Git 版本管理。
 裸机 systemd 部署，**不使用 Docker**。
 
 ```
