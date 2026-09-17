@@ -224,7 +224,7 @@ pages:
               <style>
                 .quick-links-grid {
                   display: grid;
-                  grid-template-columns: repeat(5, minmax(0, 1fr));
+                  grid-template-columns: repeat(6, minmax(0, 1fr));
                   gap: 0.55rem;
                 }
                 .quick-link {
@@ -308,6 +308,14 @@ pages:
                 <a class="quick-link" href="https://fluxlane.cn/dashboard" target="_blank" rel="noreferrer" title="FluxLane">
                   <img class="quick-link-icon" src="https://www.google.com/s2/favicons?domain=fluxlane.cn&sz=128" alt="">
                   <span class="quick-link-label">FluxLane</span>
+                </a>
+                <a class="quick-link" href="https://dash.cloudflare.com/" target="_blank" rel="noreferrer" title="Cloudflare">
+                  <img class="quick-link-icon" src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/cloudflare.png" alt="">
+                  <span class="quick-link-label">Cloudflare</span>
+                </a>
+                <a class="quick-link" href="https://x.com/" target="_blank" rel="noreferrer" title="X">
+                  <img class="quick-link-icon" src="https://www.google.com/s2/favicons?domain=x.com&sz=128" alt="">
+                  <span class="quick-link-label">X</span>
                 </a>
               </div>
           - type: custom-api
