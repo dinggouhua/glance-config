@@ -70,6 +70,8 @@ sudo bash scripts/install.sh adapters # 只更新 /opt 适配器与 systemd
 
 ## 数据源备注
 
+- AI 中转站余额（8906 `glance-relay-balance`）走中转站自身的 `GET /v1/usage`（`Authorization: Bearer <sk-...>`，返回 `balance`/`remaining`/`unit`/`usage.today`/`usage.total`）。多数中转站已不再提供 OpenAI 风格的 `/v1/dashboard/billing/subscription|usage`（实测 404），适配器按 `/v1/usage` → `/api/usage/token/` → `/usage` 顺序回退。换中转站只需改 `/etc/glance/glance-relay.env` 的 `RELAY_USER_URL`/`RELAY_API_KEY`，**无需改代码**（各站字段结构一致）。
+  - 坑：改 `RELAY_*` 后除了 `systemctl restart glance-relay-balance`，还要 `rm -f /tmp/glance-relay-balance-adapter.json`，否则会继续返回上一个站点的余额（落盘缓存）。
 - 苏超积分榜（8909 `jscl-rank`）走**网易彩票联赛资料页**解析，不再用聚合数据：聚合数据 `fapig/football/rank?type=jiangsu` 自 2026 赛季起稳定返回 `error_code=0` 但 `result.ranking=null`（同接口的中超/英超/西甲/德甲/意甲/法甲均正常），属上游数据缺失，换 key/加参数都无效。`JUHE_FOOTBALL_KEY` 仍保留在 EnvironmentFile，便于上游恢复后切回。
 - 英雄联盟世界赛（8910 `lol-worlds`）走 **Riot 官方电竞 persisted API**（`esports-api.lolesports.com/persisted/gw`，header 需 `x-api-key`，取 `LOLESPORTS_API_KEY`）+ `feed.lolesports.com/livestats/v1` 实时数据。世界赛 leagueId `98767975604431411`；赛程每页 80 场且分页，赛事开赛前一段时间才会出现带日期的对阵（2026 赛程实测 9 月下旬仍未发布，只剩 `getStandings` 的 TBD 骨架）。适配器刷新间隔自适应：直播中 30s、临赛 60-300s、无比赛 1800s。
   - 坑：Glance 模板的 `.JSON.Map` **不接受路径参数**（`wrong number of args for Map: want 0 got 1`），嵌套对象必须在适配器里拍平成顶层标量键再用 `.JSON.String/Int` 读。
