@@ -21,6 +21,8 @@ document:
       @media (max-width: 900px) {
         .stock-header, .stock-row { grid-template-columns: 1.2fr 0.8fr 0.8fr 0.7fr 0.85fr 1fr 1fr; column-gap: 0.2rem; }
       }
+      /* 搜索框压缩：默认 .search-input 高 6rem(60px) 撑高整卡，压到 4rem(40px) */
+      .widget-type-search .search-input { height: 4rem; }
     </style>
 
 theme:
@@ -109,6 +111,13 @@ pages:
     columns:
       - size: small
         widgets:
+          - type: search
+            title: 百度搜索
+            search-engine: https://www.baidu.com/s?wd={QUERY}
+            new-tab: true
+            target: _blank
+            placeholder: 搜索百度
+
           - type: calendar
             title: 日历
             first-day-of-week: monday
@@ -390,12 +399,6 @@ pages:
               {{ end }}
       - size: small
         widgets:
-          - type: search
-            title: 百度搜索
-            search-engine: https://www.baidu.com/s?wd={QUERY}
-            new-tab: true
-            target: _blank
-            placeholder: 搜索百度
           - type: server-stats
             title: 服务器状态
             servers:
