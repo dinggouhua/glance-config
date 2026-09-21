@@ -154,14 +154,6 @@ pages:
                 .dlt-win { color: #e5484d; }
                 .dlt-lose { color: var(--color-subdue); }
               </style>
-              <div class="dlt-row">
-                <div class="dlt-row-label">我的号码</div>
-                <div class="dlt-balls">
-                  {{ range .JSON.Array "my_front" }}<div class="dlt-ball dlt-front">{{ .String "" }}</div>{{ end }}
-                  <span class="dlt-divider">+</span>
-                  {{ range .JSON.Array "my_back" }}<div class="dlt-ball dlt-back">{{ .String "" }}</div>{{ end }}
-                </div>
-              </div>
               {{ if ne ( .JSON.String "status" ) "ok" }}
                 {{ $msg := .JSON.String "message" }}
                 <div class="color-subdue size-h5">{{ if $msg }}{{ $msg }}{{ else }}暂无数据{{ end }}</div>
