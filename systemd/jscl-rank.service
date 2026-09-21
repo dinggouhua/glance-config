@@ -1,0 +1,15 @@
+[Unit]
+Description=Jiangsu City Football League (JSCL) standings adapter for Glance
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/bin/python3 /opt/jscl_rank.py
+Restart=always
+RestartSec=15
+User=glance
+Group=glance
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

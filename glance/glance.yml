@@ -113,55 +113,23 @@ pages:
             title: 日历
             first-day-of-week: monday
           - type: custom-api
-            title: 天气预报
-            body-type: string
+            title: 中国节假日（本月）
             cache: 1h
-            url: https://api.github.com/rate_limit
-            options:
-              location: Taizhou, Jiangsu, China
+            url: http://127.0.0.1:8898/holidays
             template: |
-              {{ $location := replaceAll " " "%20" (.Options.StringOr "location" "") }}
-              {{ $geoURL := printf "https://geocoding-api.open-meteo.com/v1/search?name=%s&count=5&language=en&format=json" $location }}
-              {{ $geo := newRequest $geoURL | getResponse }}
-              {{ $lat := $geo.JSON.String "results.0.latitude" }}
-              {{ $lon := $geo.JSON.String "results.0.longitude" }}
-              {{ if or (eq $lat "") (eq $lon "") }}
-                <p class="color-negative">天气位置解析失败</p>
-              {{ else }}
-                {{ $weatherURL := printf "https://api.open-meteo.com/v1/forecast?latitude=%s&longitude=%s&temperature_unit=celsius&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=Asia%%2FShanghai" $lat $lon }}
-                {{ $weather := newRequest $weatherURL | getResponse }}
-                {{ $dates := $weather.JSON.Array "daily.time" }}
-                {{ $codes := $weather.JSON.Array "daily.weathercode" }}
-                {{ $highs := $weather.JSON.Array "daily.temperature_2m_max" }}
-                {{ $lows := $weather.JSON.Array "daily.temperature_2m_min" }}
-                <div style="display:grid; grid-template-columns:repeat(7, minmax(0, 1fr)); gap:0.25rem; text-align:center;">
-                  {{ range $i, $date := $dates }}
-                    {{ $dateText := $date.String "" }}
-                    {{ $code := (index $codes $i).Int "" }}
-                    {{ $high := (index $highs $i).Float "" }}
-                    {{ $low := (index $lows $i).Float "" }}
-                    {{ $icon := "？" }}
-                    {{ $desc := "其他" }}
-                    {{ if eq $code 0 }}{{ $icon = "☀️" }}{{ $desc = "晴" }}
-                    {{ else if eq $code 1 }}{{ $icon = "🌤️" }}{{ $desc = "大部晴朗" }}
-                    {{ else if eq $code 2 }}{{ $icon = "🌤️" }}{{ $desc = "局部多云" }}
-                    {{ else if eq $code 3 }}{{ $icon = "☁️" }}{{ $desc = "阴" }}
-                    {{ else if eq $code 45 48 }}{{ $icon = "🌫️" }}{{ $desc = "雾" }}
-                    {{ else if le $code 57 }}{{ $icon = "🌦️" }}{{ $desc = "毛毛雨" }}
-                    {{ else if le $code 67 }}{{ $icon = "🌧️" }}{{ $desc = "雨" }}
-                    {{ else if le $code 77 }}{{ $icon = "🌨️" }}{{ $desc = "雪" }}
-                    {{ else if le $code 86 }}{{ $icon = "🌨️" }}{{ $desc = "阵雪" }}
-                    {{ else }}{{ $icon = "⚡" }}{{ $desc = "雷雨" }}
-                    {{ end }}
-                    <div>
-                      <div class="size-h6 color-paragraph">{{ replaceMatches "[0-9]+-" "" $dateText }}</div>
-                      <div style="font-size:1.35rem; line-height:1.8;" title="{{ $desc }}">{{ $icon }}</div>
-                      <div class="size-h5"><span class="color-negative">{{ printf "%.0f" $high }}°</span></div>
-                      <div class="size-h6 color-paragraph">{{ printf "%.0f" $low }}°</div>
+              {{ $items := .JSON.Array "items" }}
+              <div style="display:flex; flex-direction:column; gap:0.45em;">
+                {{ if eq (len $items) 0 }}
+                  <div class="color-subdue">本月无节假日安排</div>
+                {{ else }}
+                  {{ range $items }}
+                    <div style="display:flex; justify-content:space-between; gap:0.5em;">
+                      <span>{{ .String "date" }}</span>
+                      <span class="{{ if .Bool "work" }}color-negative{{ else }}color-positive{{ end }}">{{ .String "name" }}{{ if .Bool "work" }}（调休上班）{{ end }}</span>
                     </div>
                   {{ end }}
-                </div>
-              {{ end }}
+                {{ end }}
+              </div>
           - type: custom-api
             title: 大乐透
             cache: 30m
@@ -455,6 +423,56 @@ pages:
                     hide: false
 
           - type: custom-api
+            title: 天气预报
+            body-type: string
+            cache: 1h
+            url: https://api.github.com/rate_limit
+            options:
+              location: Taizhou, Jiangsu, China
+            template: |
+              {{ $location := replaceAll " " "%20" (.Options.StringOr "location" "") }}
+              {{ $geoURL := printf "https://geocoding-api.open-meteo.com/v1/search?name=%s&count=5&language=en&format=json" $location }}
+              {{ $geo := newRequest $geoURL | getResponse }}
+              {{ $lat := $geo.JSON.String "results.0.latitude" }}
+              {{ $lon := $geo.JSON.String "results.0.longitude" }}
+              {{ if or (eq $lat "") (eq $lon "") }}
+                <p class="color-negative">天气位置解析失败</p>
+              {{ else }}
+                {{ $weatherURL := printf "https://api.open-meteo.com/v1/forecast?latitude=%s&longitude=%s&temperature_unit=celsius&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=Asia%%2FShanghai" $lat $lon }}
+                {{ $weather := newRequest $weatherURL | getResponse }}
+                {{ $dates := $weather.JSON.Array "daily.time" }}
+                {{ $codes := $weather.JSON.Array "daily.weathercode" }}
+                {{ $highs := $weather.JSON.Array "daily.temperature_2m_max" }}
+                {{ $lows := $weather.JSON.Array "daily.temperature_2m_min" }}
+                <div style="display:grid; grid-template-columns:repeat(7, minmax(0, 1fr)); gap:0.25rem; text-align:center;">
+                  {{ range $i, $date := $dates }}
+                    {{ $dateText := $date.String "" }}
+                    {{ $code := (index $codes $i).Int "" }}
+                    {{ $high := (index $highs $i).Float "" }}
+                    {{ $low := (index $lows $i).Float "" }}
+                    {{ $icon := "？" }}
+                    {{ $desc := "其他" }}
+                    {{ if eq $code 0 }}{{ $icon = "☀️" }}{{ $desc = "晴" }}
+                    {{ else if eq $code 1 }}{{ $icon = "🌤️" }}{{ $desc = "大部晴朗" }}
+                    {{ else if eq $code 2 }}{{ $icon = "🌤️" }}{{ $desc = "局部多云" }}
+                    {{ else if eq $code 3 }}{{ $icon = "☁️" }}{{ $desc = "阴" }}
+                    {{ else if eq $code 45 48 }}{{ $icon = "🌫️" }}{{ $desc = "雾" }}
+                    {{ else if le $code 57 }}{{ $icon = "🌦️" }}{{ $desc = "毛毛雨" }}
+                    {{ else if le $code 67 }}{{ $icon = "🌧️" }}{{ $desc = "雨" }}
+                    {{ else if le $code 77 }}{{ $icon = "🌨️" }}{{ $desc = "雪" }}
+                    {{ else if le $code 86 }}{{ $icon = "🌨️" }}{{ $desc = "阵雪" }}
+                    {{ else }}{{ $icon = "⚡" }}{{ $desc = "雷雨" }}
+                    {{ end }}
+                    <div>
+                      <div class="size-h6 color-paragraph">{{ replaceMatches "[0-9]+-" "" $dateText }}</div>
+                      <div style="font-size:1.35rem; line-height:1.8;" title="{{ $desc }}">{{ $icon }}</div>
+                      <div class="size-h5"><span class="color-negative">{{ printf "%.0f" $high }}°</span></div>
+                      <div class="size-h6 color-paragraph">{{ printf "%.0f" $low }}°</div>
+                    </div>
+                  {{ end }}
+                </div>
+              {{ end }}
+          - type: custom-api
             title: 空气质量
             cache: 10m
             url: https://api.waqi.info/feed/geo:32.486667;119.900000/?token=${WAQI_TOKEN}
@@ -502,7 +520,6 @@ pages:
                   </div>
                 </div>
 
-                <div class="size-h6" style="margin-top: 10px;">更新于 {{ slice $updated 11 16 }}</div>
               </div>
           - type: custom-api
             title: 纪念日倒计时
@@ -638,7 +655,7 @@ pages:
           - type: custom-api
             title: 江苏省城市足球联赛
             cache: 1h
-            url: https://apis.juhe.cn/fapig/football/rank?key=${JUHE_FOOTBALL_KEY}&type=jiangsu
+            url: http://127.0.0.1:8909/
             template: |
               {{ $title := .JSON.String "result.title" }}
               {{ $season := .JSON.String "result.duration" }}
