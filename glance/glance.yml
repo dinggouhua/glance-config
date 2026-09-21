@@ -677,6 +677,77 @@ pages:
                   </div>
                 {{ end }}
               </div>
+          - type: custom-api
+            title: 英雄联盟世界赛
+            cache: 5m
+            url: http://127.0.0.1:8910/
+            template: |
+              {{ $phase := .JSON.String "phase" }}
+              {{ $season := .JSON.String "season" }}
+              {{ $start := .JSON.String "start_text" }}
+              {{ $end := .JSON.String "end_text" }}
+              {{ $days := .JSON.Int "days_to_start" }}
+              {{ $next := .JSON.Array "next" }}
+              {{ $recent := .JSON.Array "recent" }}
+              {{ $stages := .JSON.Array "stages" }}
+              <div style="font-size:0.86em; display:flex; flex-direction:column; gap:0.55em;">
+                {{ if eq $phase "live" }}
+                  <div style="display:flex; align-items:center; justify-content:space-between; gap:0.5em;">
+                    <span style="color:#22c55e; font-weight:600;">● LIVE</span>
+                    <span class="color-subdue size-h6">{{ .JSON.String "live_stage" }} · BO{{ .JSON.Int "live_best_of" }} · 第{{ .JSON.Int "live_game_number" }}局</span>
+                  </div>
+                  <div style="display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:0.4em; text-align:center;">
+                    <span style="font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ .JSON.String "live_team1" }}</span>
+                    <span style="font-size:1.35em; font-weight:700;">{{ .JSON.Int "live_score1" }} : {{ .JSON.Int "live_score2" }}</span>
+                    <span style="font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ .JSON.String "live_team2" }}</span>
+                  </div>
+                  <div style="display:grid; grid-template-columns:1fr auto 1fr; gap:0.4em; text-align:center;">
+                    <span style="color:#3b82f6;">{{ .JSON.Int "live_blue_kills" }} 杀 · {{ .JSON.Int "live_blue_gold_k" }}K</span>
+                    <span class="color-subdue size-h6">人头 / 经济</span>
+                    <span style="color:#ef4444;">{{ .JSON.Int "live_red_kills" }} 杀 · {{ .JSON.Int "live_red_gold_k" }}K</span>
+                  </div>
+                {{ else }}
+                  <div style="display:flex; align-items:baseline; justify-content:space-between; gap:0.6em;">
+                    <div style="display:flex; align-items:baseline; gap:0.45em;">
+                      <span style="font-size:2em; font-weight:700; line-height:1; color:var(--color-primary);">{{ $days }}</span>
+                      <span class="color-subdue">天后开赛</span>
+                    </div>
+                    <span class="color-subdue size-h6">S{{ $season }} · {{ $start }} ~ {{ $end }}</span>
+                  </div>
+                {{ end }}
+                {{ if gt (len $stages) 0 }}
+                  <div style="display:flex; flex-wrap:wrap; gap:0.35em;">
+                    {{ range $stages }}
+                      <span style="padding:0.1em 0.55em; border:1px solid var(--color-separator); border-radius:999px; font-size:0.9em; color:var(--color-subdue);">{{ .String "name" }} {{ .Int "count" }} 场</span>
+                    {{ end }}
+                  </div>
+                {{ end }}
+                {{ if gt (len $next) 0 }}
+                  <div style="display:flex; flex-direction:column; gap:0.3em;">
+                    {{ range $next }}
+                      <div style="display:grid; grid-template-columns:76px minmax(0,1fr) auto; gap:0.45em; align-items:center; padding:0.18em 0; border-bottom:1px solid color-mix(in srgb, var(--color-separator) 55%, transparent);">
+                        <span class="color-subdue size-h6">{{ .String "date_text" }} {{ .String "time_text" }}</span>
+                        <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ .String "team1" }} vs {{ .String "team2" }}</span>
+                        <span class="color-subdue size-h6">BO{{ .Int "best_of" }}</span>
+                      </div>
+                    {{ end }}
+                  </div>
+                {{ end }}
+                {{ if gt (len $recent) 0 }}
+                  <div style="display:flex; flex-direction:column; gap:0.25em;">
+                    <div class="color-subdue size-h6">最近结果</div>
+                    {{ range $recent }}
+                      <div style="display:flex; align-items:center; justify-content:space-between; gap:0.5em;">
+                        <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ .String "team1" }} {{ .String "score" }} {{ .String "team2" }}</span>
+                        <span class="color-subdue size-h6">{{ .String "date_text" }} {{ .String "stage" }}</span>
+                      </div>
+                    {{ end }}
+                  </div>
+                {{ end }}
+                {{ if and (eq (len $next) 0) (ne $phase "live") }}
+                  <div class="color-subdue size-h6">赛程尚未发布，开赛后自动填充对阵与比分</div>
+                {{ end }}
+              </div>
       - size: full
         widgets:
           - type: markets

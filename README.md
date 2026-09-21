@@ -13,7 +13,8 @@ Internet → Caddy :443/:80 → 127.0.0.1:8080 Glance
                                      ├── 8906  AI 中转站余额
                                      ├── 8907  投资组合汇总（读 portfolio.md）
                                      ├── 8908  Polymarket 热门盘口
-                                     └── 8909  江苏省城市足球联赛（苏超）积分榜
+                                     ├── 8909  江苏省城市足球联赛（苏超）积分榜
+                                     └── 8910  英雄联盟世界赛赛程/比分
 ```
 
 ## 目录结构
@@ -26,7 +27,7 @@ Internet → Caddy :443/:80 → 127.0.0.1:8080 Glance
 | `adapters/*.py` | `/opt/*.py` | Python 适配器（`adapter_common.py` 为公共框架） |
 | `adapters/lunar-calendar/` | `/opt/lunar-calendar/` | node 倒计时服务（农历/纪念日） |
 | `adapters/zh-history-proxy/` | `/opt/zh-history-proxy/` | 中文历史条目代理（备用，未挂 systemd） |
-| `systemd/*.service` | `/etc/systemd/system/` | 12 个服务单元 |
+| `systemd/*.service` | `/etc/systemd/system/` | 13 个服务单元 |
 | `scripts/install.sh` | — | 一键部署 / 更新 |
 | `scripts/migrate-secret-key.sh` | — | 一次性脚本：把硬编码 key 迁到 EnvironmentFile |
 
@@ -45,7 +46,7 @@ sudo bash scripts/install.sh adapters # 只更新 /opt 适配器与 systemd
 
 配置与适配器只读 `${VAR}` / `os.environ`，真实值放 `EnvironmentFile`。
 
-- `/etc/systemd/system/glance-waqi.env`（640，`glance` / `lottery` / `oil_price` 服务共用）：`WAQI_TOKEN`、`TODOIST_API_TOKEN`、`WEATHER_LOCATION`、`JUHE_FOOTBALL_KEY`、`CLASH_API_SECRET`、`JUHE_OIL_APIKEY`、`JISUAPI_APPKEY`
+- `/etc/systemd/system/glance-waqi.env`（640，`glance` / `lottery` / `oil_price` / `lol-worlds` 服务共用）：`WAQI_TOKEN`、`TODOIST_API_TOKEN`、`WEATHER_LOCATION`、`JUHE_FOOTBALL_KEY`、`CLASH_API_SECRET`、`JUHE_OIL_APIKEY`、`JISUAPI_APPKEY`、`LOLESPORTS_API_KEY`
 - `/etc/glance/glance-relay.env`（640）：`RELAY_USER_URL`、`RELAY_API_KEY`、`RELAY_BALANCE_PORT`
 
 改 EnvironmentFile 后必须 `systemctl daemon-reload && systemctl restart <service>`；变量缺失会导致 Glance 配置解析失败（`environment variable XXX not found`）。
@@ -64,12 +65,15 @@ sudo bash scripts/install.sh adapters # 只更新 /opt 适配器与 systemd
 
 ## 已启用 / 未启用
 
-- 已启用：`glance`、`caddy`、`ashares`、`vix`、`oil_price`、`lottery`、`portfolio-summary`、`polymarket-trending`、`lunar-countdown`、`glance-relay-balance`、`jscl-rank`
+- 已启用：`glance`、`caddy`、`ashares`、`vix`、`oil_price`、`lottery`、`portfolio-summary`、`polymarket-trending`、`lunar-countdown`、`glance-relay-balance`、`jscl-rank`、`lol-worlds`
 - 仓库保留但**本机未启用**（孤儿服务，`glance.yml` 无引用）：`aqi.service`(8899)、`market-overview.service`(8905)。需要时手工 `systemctl enable --now`。
 
 ## 数据源备注
 
 - 苏超积分榜（8909 `jscl-rank`）走**网易彩票联赛资料页**解析，不再用聚合数据：聚合数据 `fapig/football/rank?type=jiangsu` 自 2026 赛季起稳定返回 `error_code=0` 但 `result.ranking=null`（同接口的中超/英超/西甲/德甲/意甲/法甲均正常），属上游数据缺失，换 key/加参数都无效。`JUHE_FOOTBALL_KEY` 仍保留在 EnvironmentFile，便于上游恢复后切回。
+- 英雄联盟世界赛（8910 `lol-worlds`）走 **Riot 官方电竞 persisted API**（`esports-api.lolesports.com/persisted/gw`，header 需 `x-api-key`，取 `LOLESPORTS_API_KEY`）+ `feed.lolesports.com/livestats/v1` 实时数据。世界赛 leagueId `98767975604431411`；赛程每页 80 场且分页，赛事开赛前一段时间才会出现带日期的对阵（2026 赛程实测 9 月下旬仍未发布，只剩 `getStandings` 的 TBD 骨架）。适配器刷新间隔自适应：直播中 30s、临赛 60-300s、无比赛 1800s。
+  - 坑：Glance 模板的 `.JSON.Map` **不接受路径参数**（`wrong number of args for Map: want 0 got 1`），嵌套对象必须在适配器里拍平成顶层标量键再用 `.JSON.String/Int` 读。
+  - 坑：改完 payload 结构后必须先删 `/tmp/glance-<name>-adapter.json` 再重启服务，否则 `adapter_common` 会继续服务旧结构的落盘缓存（最长一个 TTL 周期）。
 
 ## 敏感信息
 

@@ -13,7 +13,7 @@ cp /etc/caddy/Caddyfile "$REPO_DIR/caddy/Caddyfile"
 for f in /opt/*.py; do cp "$f" "$REPO_DIR/adapters/$(basename "$f")"; done
 cp /opt/lunar-calendar/countdown.js /opt/lunar-calendar/package.json /opt/lunar-calendar/package-lock.json "$REPO_DIR/adapters/lunar-calendar/" 2>/dev/null || true
 cp /opt/zh-history-proxy/zh_history.py "$REPO_DIR/adapters/zh-history-proxy/" 2>/dev/null || true
-for u in /etc/systemd/system/{glance,glance-relay-balance,aqi,ashares,jscl-rank,lottery,lunar-countdown,market-overview,oil_price,polymarket-trending,portfolio-summary,vix}.service; do
+for u in /etc/systemd/system/{glance,glance-relay-balance,aqi,ashares,jscl-rank,lol-worlds,lottery,lunar-countdown,market-overview,oil_price,polymarket-trending,portfolio-summary,vix}.service; do
   [ -f "$u" ] && cp "$u" "$REPO_DIR/systemd/"
 done
 find "$REPO_DIR" -type f -not -path '*/.git/*' -exec chmod 644 {} \;
