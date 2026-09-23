@@ -24,7 +24,7 @@ Internet → Caddy :443/:80 → 127.0.0.1:8080 Glance
 | --- | --- | --- |
 | `glance/glance.yml` | `/etc/glance/glance.yml` | 主配置：Work / Personal 两页，18 个 widget（17 个 custom-api）；含 `auth` 认证段 |
 | `glance/portfolio.example.md` | `/etc/glance/portfolio.md` | 持仓数据模板（真实持仓不入库） |
-| `caddy/Caddyfile` | `/etc/caddy/Caddyfile` | 反代 + 证书，`/oil-price/*`、`/stock-chart/*`、`/ai-balance/*` 路径分流 |
+| `caddy/Caddyfile` | `/etc/caddy/Caddyfile` | 反代 + 证书，`/oil-price/*`、`/stock-chart/*`、`/ai-balance/*` 路径分流；油价与余额两条走 `basic_auth`，见「敏感信息」 |
 | `adapters/*.py` | `/opt/*.py` | Python 适配器（`adapter_common.py` 为公共框架） |
 | `adapters/lunar-calendar/` | `/opt/lunar-calendar/` | node 倒计时服务（农历/纪念日） |
 | `adapters/zh-history-proxy/` | `/opt/zh-history-proxy/` | 中文历史条目代理（备用，未挂 systemd） |
@@ -85,3 +85,9 @@ sudo bash scripts/install.sh adapters # 只更新 /opt 适配器与 systemd
 仓库不含密钥、不含真实持仓。公网面板**已启用 Glance 认证**（`auth.secret-key` + `users.*.password-hash`，用 `glance secret:make` / `glance password:hash` 生成）：未登录访问 `/` 返回 303、`/api/pages/*` 返回 401。改密码：`glance password:hash '新密码'` 替换 `users.<name>.password-hash` 后 `systemctl restart glance`。
 
 **cookie 类凭据不入库**：`/etc/glance/oilchem-cookies.json`（隆众登录态）、`/etc/glance/glance-relay.env`、`/etc/systemd/system/glance-waqi.env` 都在服务器本地，仓库只记录变量名与续期方法。`scripts/sync-from-server.sh` 的自检正则已覆盖这些凭据的特征串，误入库会直接 `exit 1`。
+
+**Caddy 旁路路径已加认证**：`/oil-price/*`、`/ai-balance/*` 两条 JSON 反代原先直接暴露（绕过 Glance 登录），现改为 `basic_auth`，凭据存 `/etc/caddy/caddy-auth.env`（640 root:caddy，`CADDY_AUTH_USER` / `CADDY_AUTH_HASH`），由 `caddy.service.d/override.conf` 的 `EnvironmentFile` 注入，仓库只留 `${CADDY_AUTH_USER}` / `${CADDY_AUTH_HASH}` 变量。改密码：`caddy hash-password --plaintext '新密码'` 写入该 env 文件后 `systemctl restart caddy`。
+
+`/stock-chart/*` **保持公网可读且不加认证**：它是自选股 widget 里 `<img src>` 的走势缩略图地址，加认证会导致图片全部 403。该路径只按股票代码返回公开行情 SVG，不含持仓、成本与数量。
+
+**AI 余额 widget 已改直连**：`https://www.dclaw.top/ai-balance/balance` → `http://127.0.0.1:8906/balance`，避免为取本地数据绕公网一圈（也免去 widget 依赖 Caddy 凭据）。

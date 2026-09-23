@@ -1,16 +1,26 @@
 # Glance 面板
 dclaw.top, www.dclaw.top {
-    handle_path /oil-price/* {
-        reverse_proxy 127.0.0.1:8903
-    }
+	# 油价 JSON：保留公网入口，但需凭据（不再绕过 Glance 认证）
+	handle_path /oil-price/* {
+		basic_auth {
+			{$CADDY_AUTH_USER} {$CADDY_AUTH_HASH}
+		}
+		reverse_proxy 127.0.0.1:8903
+	}
 
-    handle /stock-chart/* {
-        reverse_proxy 127.0.0.1:8900
-    }
+	# 自选股走势缩略图：widget 内 <img src> 直接引用，须公网可读
+	# 数据为公开行情（按代码取图），不含持仓与成本
+	handle /stock-chart/* {
+		reverse_proxy 127.0.0.1:8900
+	}
 
-    handle_path /ai-balance/* {
-        reverse_proxy 127.0.0.1:8906
-    }
+	# AI 余额 JSON：保留公网入口，但需凭据
+	handle_path /ai-balance/* {
+		basic_auth {
+			{$CADDY_AUTH_USER} {$CADDY_AUTH_HASH}
+		}
+		reverse_proxy 127.0.0.1:8906
+	}
 
-    reverse_proxy 127.0.0.1:8080
+	reverse_proxy 127.0.0.1:8080
 }

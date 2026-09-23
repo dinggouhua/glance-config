@@ -660,7 +660,7 @@ pages:
           - type: custom-api
             title: AI 中转站余额
             cache: 5m
-            url: https://www.dclaw.top/ai-balance/balance
+            url: http://127.0.0.1:8906/balance
             template: |
               {{ $rem := .JSON.Float "data.remaining" }}
               {{ $used := .JSON.Float "data.used" }}
