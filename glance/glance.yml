@@ -178,7 +178,6 @@ pages:
               <style>
                 .dlt-period { color: var(--color-subdue); font-size: 0.72em; margin-bottom: 0.35rem; }
                 .dlt-row { width: 100%; margin-bottom: 0.7rem; }
-                .dlt-row-label { color: var(--color-subdue); font-size: 0.72em; margin-bottom: 0.3rem; text-align: center; }
                 .dlt-balls { display: flex; width: 100%; justify-content: center; gap: 0.35rem; align-items: center; }
                 .dlt-ball {
                   width: 2.2rem; height: 2.2rem;
@@ -200,7 +199,6 @@ pages:
               {{ else }}
                 <div class="dlt-period" style="text-align:center;">第 {{ .JSON.String "issueno" }} 期 · {{ .JSON.String "opendate" }}</div>
                 <div class="dlt-row">
-                  <div class="dlt-row-label">开奖号码</div>
                   <div class="dlt-balls">
                     {{ range .JSON.Array "front" }}<div class="dlt-ball dlt-front">{{ .String "" }}</div>{{ end }}
                     <span class="dlt-divider">+</span>
