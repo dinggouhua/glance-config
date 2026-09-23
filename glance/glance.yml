@@ -129,23 +129,53 @@ pages:
             title: 日历
             first-day-of-week: monday
           - type: custom-api
-            title: 中国节假日（本月）
-            cache: 1h
-            url: http://127.0.0.1:8898/holidays
+            title: PP产品利润测算
+            cache: 30m
+            url: http://127.0.0.1:8911/
             template: |
-              {{ $items := .JSON.Array "items" }}
-              <div style="display:flex; flex-direction:column; gap:0.45em;">
-                {{ if eq (len $items) 0 }}
-                  <div class="color-subdue">本月无节假日安排</div>
-                {{ else }}
-                  {{ range $items }}
-                    <div style="display:flex; justify-content:space-between; gap:0.5em;">
-                      <span>{{ .String "date" }}</span>
-                      <span class="{{ if .Bool "work" }}color-negative{{ else }}color-positive{{ end }}">{{ .String "name" }}{{ if .Bool "work" }}（调休上班）{{ end }}</span>
-                    </div>
-                  {{ end }}
-                {{ end }}
+              <style>
+                .pp-wrap { display: flex; flex-direction: column; gap: 0.5rem; font-size: 1.05rem; }
+                .pp-head { display: grid; grid-template-columns: 1fr 4.2rem 4.2rem; gap: 0.4rem;
+                           color: var(--color-subdue); font-size: 0.72em; padding-bottom: 0.15rem; }
+                .pp-head > span:not(:first-child) { text-align: right; }
+                .pp-row { display: grid; grid-template-columns: 1fr 4.2rem 4.2rem; gap: 0.4rem;
+                          align-items: center; padding: 0.3rem 0; border-top: 1px solid var(--color-separator); }
+                .pp-row > span:not(:first-child) { text-align: right; font-weight: 600; }
+                .pp-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+                .pp-pos { color: #ef4444; }
+                .pp-neg { color: #22c55e; }
+                .pp-raw { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem;
+                          color: var(--color-subdue); font-size: 0.78em; padding-top: 0.45rem;
+                          border-top: 1px solid var(--color-separator); }
+              </style>
+              {{ if ne ( .JSON.String "status" ) "ok" }}
+                <p class="color-negative">{{ .JSON.String "message" }}</p>
+              {{ else }}
+              {{ $np1 := .JSON.Int "np_1102k" }}{{ $cf1 := .JSON.Int "cf_1102k" }}
+              {{ $np2 := .JSON.Int "np_2500hy" }}{{ $cf2 := .JSON.Int "cf_2500hy" }}
+              {{ $np3 := .JSON.Int "np_3248r" }}{{ $cf3 := .JSON.Int "cf_3248r" }}
+              <div class="pp-wrap">
+                <div class="pp-head"><span>牌号</span><span>净利润</span><span>现金流</span></div>
+                <div class="pp-row">
+                  <span class="pp-name">1102K 拉丝</span>
+                  <span class="{{ if gt $np1 0 }}pp-pos{{ else }}pp-neg{{ end }}">{{ $np1 }}</span>
+                  <span class="{{ if gt $cf1 0 }}pp-pos{{ else }}pp-neg{{ end }}">{{ $cf1 }}</span>
+                </div>
+                <div class="pp-row">
+                  <span class="pp-name">2500HY 共聚</span>
+                  <span class="{{ if gt $np2 0 }}pp-pos{{ else }}pp-neg{{ end }}">{{ $np2 }}</span>
+                  <span class="{{ if gt $cf2 0 }}pp-pos{{ else }}pp-neg{{ end }}">{{ $cf2 }}</span>
+                </div>
+                <div class="pp-row">
+                  <span class="pp-name">3248R 透明</span>
+                  <span class="{{ if gt $np3 0 }}pp-pos{{ else }}pp-neg{{ end }}">{{ $np3 }}</span>
+                  <span class="{{ if gt $cf3 0 }}pp-pos{{ else }}pp-neg{{ end }}">{{ $cf3 }}</span>
+                </div>
+                <div class="pp-raw">
+                  <span>{{ .JSON.String "data_date" }} · {{ .JSON.String "updated" }} 更新</span>
+                </div>
               </div>
+              {{ end }}
           - type: custom-api
             title: 大乐透
             cache: 30m
@@ -547,55 +577,6 @@ pages:
                 </div>
               {{ end }}
               </div>
-
-          - type: custom-api
-            title: PP产品利润测算
-            cache: 30m
-            url: http://127.0.0.1:8911/
-            template: |
-              <style>
-                .pp-wrap { display: flex; flex-direction: column; gap: 0.5rem; font-size: 1.05rem; }
-                .pp-head { display: grid; grid-template-columns: 1fr 4.2rem 4.2rem; gap: 0.4rem;
-                           color: var(--color-subdue); font-size: 0.72em; padding-bottom: 0.15rem; }
-                .pp-head > span:not(:first-child) { text-align: right; }
-                .pp-row { display: grid; grid-template-columns: 1fr 4.2rem 4.2rem; gap: 0.4rem;
-                          align-items: center; padding: 0.3rem 0; border-top: 1px solid var(--color-separator); }
-                .pp-row > span:not(:first-child) { text-align: right; font-weight: 600; }
-                .pp-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-                .pp-pos { color: #ef4444; }
-                .pp-neg { color: #22c55e; }
-                .pp-raw { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem;
-                          color: var(--color-subdue); font-size: 0.78em; padding-top: 0.45rem;
-                          border-top: 1px solid var(--color-separator); }
-              </style>
-              {{ if ne ( .JSON.String "status" ) "ok" }}
-                <p class="color-negative">{{ .JSON.String "message" }}</p>
-              {{ else }}
-              {{ $np1 := .JSON.Int "np_1102k" }}{{ $cf1 := .JSON.Int "cf_1102k" }}
-              {{ $np2 := .JSON.Int "np_2500hy" }}{{ $cf2 := .JSON.Int "cf_2500hy" }}
-              {{ $np3 := .JSON.Int "np_3248r" }}{{ $cf3 := .JSON.Int "cf_3248r" }}
-              <div class="pp-wrap">
-                <div class="pp-head"><span>牌号</span><span>净利润</span><span>现金流</span></div>
-                <div class="pp-row">
-                  <span class="pp-name">1102K 拉丝</span>
-                  <span class="{{ if gt $np1 0 }}pp-pos{{ else }}pp-neg{{ end }}">{{ $np1 }}</span>
-                  <span class="{{ if gt $cf1 0 }}pp-pos{{ else }}pp-neg{{ end }}">{{ $cf1 }}</span>
-                </div>
-                <div class="pp-row">
-                  <span class="pp-name">2500HY 共聚</span>
-                  <span class="{{ if gt $np2 0 }}pp-pos{{ else }}pp-neg{{ end }}">{{ $np2 }}</span>
-                  <span class="{{ if gt $cf2 0 }}pp-pos{{ else }}pp-neg{{ end }}">{{ $cf2 }}</span>
-                </div>
-                <div class="pp-row">
-                  <span class="pp-name">3248R 透明</span>
-                  <span class="{{ if gt $np3 0 }}pp-pos{{ else }}pp-neg{{ end }}">{{ $np3 }}</span>
-                  <span class="{{ if gt $cf3 0 }}pp-pos{{ else }}pp-neg{{ end }}">{{ $cf3 }}</span>
-                </div>
-                <div class="pp-raw">
-                  <span>{{ .JSON.String "data_date" }} · {{ .JSON.String "updated" }} 更新</span>
-                </div>
-              </div>
-              {{ end }}
   - name: Personal
     slug: personal
     columns:

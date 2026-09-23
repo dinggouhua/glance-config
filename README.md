@@ -22,7 +22,7 @@ Internet → Caddy :443/:80 → 127.0.0.1:8080 Glance
 
 | 路径 | 部署目标 | 说明 |
 | --- | --- | --- |
-| `glance/glance.yml` | `/etc/glance/glance.yml` | 主配置：Work / Personal 两页，19 个 widget（18 个 custom-api）；含 `auth` 认证段 |
+| `glance/glance.yml` | `/etc/glance/glance.yml` | 主配置：Work / Personal 两页，18 个 widget（17 个 custom-api）；含 `auth` 认证段 |
 | `glance/portfolio.example.md` | `/etc/glance/portfolio.md` | 持仓数据模板（真实持仓不入库） |
 | `caddy/Caddyfile` | `/etc/caddy/Caddyfile` | 反代 + 证书，`/oil-price/*`、`/stock-chart/*`、`/ai-balance/*` 路径分流 |
 | `adapters/*.py` | `/opt/*.py` | Python 适配器（`adapter_common.py` 为公共框架） |
