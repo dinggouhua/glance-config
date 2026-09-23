@@ -4,6 +4,7 @@ After=network.target
 
 [Service]
 EnvironmentFile=/etc/systemd/system/glance-waqi.env
+EnvironmentFile=/etc/glance/glance-auth.env
 ExecStart=/usr/local/bin/glance --config /etc/glance/glance.yml
 Restart=always
 RestartSec=5

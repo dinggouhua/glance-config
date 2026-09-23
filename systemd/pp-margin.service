@@ -1,0 +1,22 @@
+[Unit]
+Description=PP margin adapter for Glance (oilchem prices -> net profit / cash flow)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=glance
+Group=glance
+ExecStart=/usr/bin/python3 /opt/pp_margin.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+ReadOnlyPaths=/opt /etc/glance
+
+[Install]
+WantedBy=multi-user.target

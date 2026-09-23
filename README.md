@@ -14,20 +14,21 @@ Internet → Caddy :443/:80 → 127.0.0.1:8080 Glance
                                      ├── 8907  投资组合汇总（读 portfolio.md）
                                      ├── 8908  Polymarket 热门盘口
                                      ├── 8909  江苏省城市足球联赛（苏超）积分榜
-                                     └── 8910  英雄联盟世界赛赛程/比分
+                                     ├── 8910  英雄联盟世界赛赛程/比分
+                                     └── 8911  PP 加工利润（隆众价格 → 净利/现金流）
 ```
 
 ## 目录结构
 
 | 路径 | 部署目标 | 说明 |
 | --- | --- | --- |
-| `glance/glance.yml` | `/etc/glance/glance.yml` | 主配置：Work / Personal 两页，18 个 widget（17 个 custom-api） |
+| `glance/glance.yml` | `/etc/glance/glance.yml` | 主配置：Work / Personal 两页，19 个 widget（18 个 custom-api）；含 `auth` 认证段 |
 | `glance/portfolio.example.md` | `/etc/glance/portfolio.md` | 持仓数据模板（真实持仓不入库） |
 | `caddy/Caddyfile` | `/etc/caddy/Caddyfile` | 反代 + 证书，`/oil-price/*`、`/stock-chart/*`、`/ai-balance/*` 路径分流 |
 | `adapters/*.py` | `/opt/*.py` | Python 适配器（`adapter_common.py` 为公共框架） |
 | `adapters/lunar-calendar/` | `/opt/lunar-calendar/` | node 倒计时服务（农历/纪念日） |
 | `adapters/zh-history-proxy/` | `/opt/zh-history-proxy/` | 中文历史条目代理（备用，未挂 systemd） |
-| `systemd/*.service` | `/etc/systemd/system/` | 13 个服务单元 |
+| `systemd/*.service` | `/etc/systemd/system/` | 14 个服务单元 |
 | `scripts/install.sh` | — | 一键部署 / 更新 |
 | `scripts/migrate-secret-key.sh` | — | 一次性脚本：把硬编码 key 迁到 EnvironmentFile |
 
@@ -48,6 +49,7 @@ sudo bash scripts/install.sh adapters # 只更新 /opt 适配器与 systemd
 
 - `/etc/systemd/system/glance-waqi.env`（640，`glance` / `lottery` / `oil_price` / `lol-worlds` 服务共用）：`WAQI_TOKEN`、`TODOIST_API_TOKEN`、`WEATHER_LOCATION`、`JUHE_FOOTBALL_KEY`、`CLASH_API_SECRET`、`JUHE_OIL_APIKEY`、`JISUAPI_APPKEY`、`LOLESPORTS_API_KEY`
 - `/etc/glance/glance-relay.env`（640）：`RELAY_USER_URL`、`RELAY_API_KEY`、`RELAY_BALANCE_PORT`
+- `/etc/glance/oilchem-cookies.json`（640 root:glance，**不入库**）：隆众资讯 `dc.oilchem.net` 登录 cookie（`pp-margin` 服务读取）。`_member_user_tonken_` 约 30 天过期，失效后适配器保留上次成功数据并在 widget 上显示旧日期；续期方式：浏览器登录隆众 → 导出 cookies → 覆盖此文件 → `systemctl restart pp-margin`。
 
 改 EnvironmentFile 后必须 `systemctl daemon-reload && systemctl restart <service>`；变量缺失会导致 Glance 配置解析失败（`environment variable XXX not found`）。
 
@@ -65,7 +67,7 @@ sudo bash scripts/install.sh adapters # 只更新 /opt 适配器与 systemd
 
 ## 已启用 / 未启用
 
-- 已启用：`glance`、`caddy`、`ashares`、`vix`、`oil_price`、`lottery`、`portfolio-summary`、`polymarket-trending`、`lunar-countdown`、`glance-relay-balance`、`jscl-rank`、`lol-worlds`
+- 已启用：`glance`、`caddy`、`ashares`、`vix`、`oil_price`、`lottery`、`portfolio-summary`、`polymarket-trending`、`lunar-countdown`、`glance-relay-balance`、`jscl-rank`、`lol-worlds`、`pp-margin`
 - 仓库保留但**本机未启用**（孤儿服务，`glance.yml` 无引用）：`aqi.service`(8899)、`market-overview.service`(8905)。需要时手工 `systemctl enable --now`。
 
 ## 数据源备注
@@ -74,9 +76,12 @@ sudo bash scripts/install.sh adapters # 只更新 /opt 适配器与 systemd
   - 坑：改 `RELAY_*` 后除了 `systemctl restart glance-relay-balance`，还要 `rm -f /tmp/glance-relay-balance-adapter.json`，否则会继续返回上一个站点的余额（落盘缓存）。
 - 苏超积分榜（8909 `jscl-rank`）走**网易彩票联赛资料页**解析，不再用聚合数据：聚合数据 `fapig/football/rank?type=jiangsu` 自 2026 赛季起稳定返回 `error_code=0` 但 `result.ranking=null`（同接口的中超/英超/西甲/德甲/意甲/法甲均正常），属上游数据缺失，换 key/加参数都无效。`JUHE_FOOTBALL_KEY` 仍保留在 EnvironmentFile，便于上游恢复后切回。
 - 英雄联盟世界赛（8910 `lol-worlds`）走 **Riot 官方电竞 persisted API**（`esports-api.lolesports.com/persisted/gw`，header 需 `x-api-key`，取 `LOLESPORTS_API_KEY`）+ `feed.lolesports.com/livestats/v1` 实时数据。世界赛 leagueId `98767975604431411`；赛程每页 80 场且分页，赛事开赛前一段时间才会出现带日期的对阵（2026 赛程实测 9 月下旬仍未发布，只剩 `getStandings` 的 TBD 骨架）。适配器刷新间隔自适应：直播中 30s、临赛 60-300s、无比赛 1800s。
+- PP 加工利润（8911 `pp-margin`）走 **隆众资讯 `dc.oilchem.net`**（需登录 cookie，见上）。取丙烯/乙烯/PP1102K/PP2500HY/PP3248R 五个价格后按 `PP产品规划与测算表.xlsx` 的完全成本法算净利润与现金流（元/吨）。两个坑：①**隆众层级不统一**——乙烯的 `region` 是「中国」而市场名才是「华东」、3248R 的 `region` 是「华南地区」而市场名是「厦门」，取价必须同时匹配 region 与 `internalMarketName`，只匹配 region 会漏；②原独立脚本 `daily_1102k_push.py` 的登录失效判断用了升序日期的 `d[-1]`（取到最旧日期），本适配器统一降序取最新。适配器输出全部拍平成顶层标量键（`.JSON.Map` 不接受路径参数）。
   - 坑：Glance 模板的 `.JSON.Map` **不接受路径参数**（`wrong number of args for Map: want 0 got 1`），嵌套对象必须在适配器里拍平成顶层标量键再用 `.JSON.String/Int` 读。
   - 坑：改完 payload 结构后必须先删 `/tmp/glance-<name>-adapter.json` 再重启服务，否则 `adapter_common` 会继续服务旧结构的落盘缓存（最长一个 TTL 周期）。
 
 ## 敏感信息
 
-仓库不含密钥、不含真实持仓。公网面板建议启用 Glance 认证（`auth.secret-key` + `users.*.password-hash`，用 `glance secret:make` / `glance password:hash` 生成）。
+仓库不含密钥、不含真实持仓。公网面板**已启用 Glance 认证**（`auth.secret-key` + `users.*.password-hash`，用 `glance secret:make` / `glance password:hash` 生成）：未登录访问 `/` 返回 303、`/api/pages/*` 返回 401。改密码：`glance password:hash '新密码'` 替换 `users.<name>.password-hash` 后 `systemctl restart glance`。
+
+**cookie 类凭据不入库**：`/etc/glance/oilchem-cookies.json`（隆众登录态）、`/etc/glance/glance-relay.env`、`/etc/systemd/system/glance-waqi.env` 都在服务器本地，仓库只记录变量名与续期方法。`scripts/sync-from-server.sh` 的自检正则已覆盖这些凭据的特征串，误入库会直接 `exit 1`。
