@@ -327,7 +327,7 @@ pages:
               </style>
               {{ $tasks := .JSON.Array "results" }}
               {{ if $tasks }}
-                <ul class="list list-gap-14 collapsible-container" data-collapse-after="8">
+                <ul class="list list-gap-14 collapsible-container" data-collapse-after="7">
                   {{ range $tasks }}
                     <li>
                       <div class="task-row-todoist">
