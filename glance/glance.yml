@@ -549,7 +549,7 @@ pages:
               </div>
 
           - type: custom-api
-            title: PP 加工利润
+            title: PP产品利润测算
             cache: 30m
             url: http://127.0.0.1:8911/
             template: |
@@ -567,7 +567,6 @@ pages:
                 .pp-raw { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem;
                           color: var(--color-subdue); font-size: 0.78em; padding-top: 0.45rem;
                           border-top: 1px solid var(--color-separator); }
-                .pp-raw b { color: var(--color-highlight); font-weight: 600; }
               </style>
               {{ if ne ( .JSON.String "status" ) "ok" }}
                 <p class="color-negative">{{ .JSON.String "message" }}</p>
@@ -593,9 +592,6 @@ pages:
                   <span class="{{ if gt $cf3 0 }}pp-pos{{ else }}pp-neg{{ end }}">{{ $cf3 }}</span>
                 </div>
                 <div class="pp-raw">
-                  <span>丙烯 <b>{{ .JSON.Int "acr" }}</b></span>
-                  <span>乙烯 <b>{{ .JSON.Int "eth" }}</b></span>
-                  <span>PP <b>{{ .JSON.Int "pp_1102k" }}/{{ .JSON.Int "pp_2500hy" }}/{{ .JSON.Int "pp_3248r" }}</b></span>
                   <span>{{ .JSON.String "data_date" }} · {{ .JSON.String "updated" }} 更新</span>
                 </div>
               </div>
