@@ -144,9 +144,6 @@ pages:
                 .pp-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
                 .pp-pos { color: #ef4444; }
                 .pp-neg { color: #22c55e; }
-                .pp-raw { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem;
-                          color: var(--color-subdue); font-size: 0.78em; padding-top: 0.45rem;
-                          border-top: 1px solid var(--color-separator); }
               </style>
               {{ if ne ( .JSON.String "status" ) "ok" }}
                 <p class="color-negative">{{ .JSON.String "message" }}</p>
@@ -170,9 +167,6 @@ pages:
                   <span class="pp-name">3248R 透明</span>
                   <span class="{{ if gt $np3 0 }}pp-pos{{ else }}pp-neg{{ end }}">{{ $np3 }}</span>
                   <span class="{{ if gt $cf3 0 }}pp-pos{{ else }}pp-neg{{ end }}">{{ $cf3 }}</span>
-                </div>
-                <div class="pp-raw">
-                  <span>{{ .JSON.String "data_date" }} · {{ .JSON.String "updated" }} 更新</span>
                 </div>
               </div>
               {{ end }}
